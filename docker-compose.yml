@@ -1,0 +1,48 @@
+services:
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "3001:3001"
+      - "50050:50050"
+    environment:
+      - JWT_SECRET=super-secret-key
+    networks:
+      - auth-demo
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "3002:3002"
+      - "50051:50051"
+    environment:
+      - JWT_SECRET=super-secret-key
+    networks:
+      - auth-demo
+
+  bff:
+    build: ./bff
+    ports:
+      - "3000:3000"
+    environment:
+      - JWT_SECRET=super-secret-key
+      - AUTH_SERVICE_URL=auth-service:50050
+      - AUTH_HTTP_URL=http://auth-service:3001
+      - USER_SERVICE_URL=user-service:50051
+    depends_on:
+      - auth-service
+      - user-service
+    networks:
+      - auth-demo
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - bff
+    networks:
+      - auth-demo
+
+networks:
+  auth-demo:
+    driver: bridge

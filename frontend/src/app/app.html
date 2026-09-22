@@ -1,0 +1,115 @@
+<header class="topbar">
+  <div class="brand">SKILL<span>UP</span></div>
+  <div class="topic">Авторизация RBAC/ABAC в микросервисах · live-демо</div>
+  <span class="badge-api">BFF → http://localhost:3000</span>
+</header>
+
+<main>
+
+  <!-- 1. Логин -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>1. Аутентификация — получение JWT</h2>
+      <span class="hint">POST /auth/login</span>
+    </div>
+    <div class="row">
+      <select (change)="selectAccount(($any($event.target).value))" [disabled]="loading()">
+        @for (a of accounts; track a.username) {
+          <option [value]="a.username">{{ a.label }}</option>
+        }
+      </select>
+      <button (click)="login()" [disabled]="loading()">Войти</button>
+    </div>
+
+    @if (token(); as t) {
+      <div class="ok-line">✔ JWT получен (роль и отдел внутри claims)</div>
+      <div class="token-box">Bearer {{ t.slice(0, 70) }}…</div>
+      <div class="muted">Текущий пользователь: <b>{{ currentUser() }}</b></div>
+    } @else {
+      <div class="muted">Выберите пользователя и нажмите «Войти», чтобы получить токен.</div>
+    }
+    <!-- ошибка логина отображается в usersResult -->
+    @if (usersResult() && !usersResult()!.ok && !token()) {
+      <div class="err-line">Не удалось войти: {{ usersResult()!.text }}</div>
+    }
+  </section>
+
+  <!-- 2. RBAC -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>2. RBAC — список пользователей</h2>
+      <span class="hint">GET /users · нужно право user:read</span>
+    </div>
+    <div class="row">
+      <button (click)="loadUsers()" [disabled]="!token() || loading()">
+        Запросить список пользователей
+      </button>
+    </div>
+    @if (usersResult(); as r) {
+      @if (r.ok) {
+        <pre class="ok-box">{{ r.text }}</pre>
+      } @else {
+        <pre class="err-box">⛔ {{ r.text }}</pre>
+      }
+    }
+  </section>
+
+  <!-- 3. ABAC -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>3. ABAC — доступ к документу по отделу</h2>
+      <span class="hint">GET /documents/:id · атрибуты субъекта vs ресурса</span>
+    </div>
+    <div class="doc-list">
+      @for (d of docs; track d.id) {
+        <button class="doc" (click)="loadDocument(d)" [disabled]="!token() || loading()">
+          <span class="doc-id">#{{ d.id }}</span>
+          <span class="doc-title">{{ d.title }}</span>
+          <span class="doc-dept">{{ d.department }}</span>
+        </button>
+      }
+    </div>
+    <div class="results">
+      @for (d of docs; track d.id) {
+        @if (docResults()[d.id]; as r) {
+          <div class="res-line" [class.ok]="r.ok" [class.err]="!r.ok">
+            <b>doc #{{ d.id }}</b> →
+            @if (r.ok) {
+              <span>200 OK · {{ r.text }}</span>
+            } @else {
+              <span>{{ r.text }}</span>
+            }
+          </div>
+        }
+      }
+    </div>
+  </section>
+
+  <!-- 4. Политики -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>4. ABAC-политики — обновление на лету</h2>
+      <span class="hint">POST /auth/policies</span>
+    </div>
+    <div class="row">
+      <button (click)="addManagerPolicy()" [disabled]="loading()">
+        Добавить правило: manager видит все документы
+      </button>
+    </div>
+    @if (policyMsg(); as m) {
+      <div class="ok-line">{{ m }}</div>
+    }
+    @if (policies().length) {
+      <div class="muted">Текущие ABAC-правила для document:read:</div>
+      <ul class="policy-list">
+        @for (p of policies(); track $index) {
+          <li>▸ {{ p.description }}</li>
+        }
+      </ul>
+    }
+  </section>
+
+  <footer>
+    SkillUp · NestJS + gRPC + Angular 22 · теперь проверьте doc #4 / #7 у менеджера
+  </footer>
+</main>
